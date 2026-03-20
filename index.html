@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Product</title>
+
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+
+<style>
+
+body{
+  margin:0;
+  font-family:Inter;
+  background:#fff;
+  color:#111;
+}
+
+/* LAYOUT */
+.container{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  min-height:100vh;
+}
+
+/* IMAGE SIDE */
+.image{
+  position:sticky;
+  top:0;
+  height:100vh;
+  overflow:hidden;
+}
+
+.image img{
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  transition:transform 0.6s ease;
+}
+
+/* INFO SIDE */
+.info{
+  padding:80px 60px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+}
+
+/* TEXT */
+h1{
+  font-family:'Playfair Display';
+  font-size:42px;
+  margin-bottom:10px;
+}
+
+.price{
+  font-size:20px;
+  margin-bottom:20px;
+}
+
+.desc{
+  color:#666;
+  line-height:1.6;
+  margin-bottom:25px;
+}
+
+/* TRUST */
+.trust{
+  font-size:14px;
+  color:#444;
+  margin-bottom:20px;
+}
+<div class="reviews-section fade">
+
+  <h3>Customer Reviews</h3>
+
+  <div id="reviewsList"></div>
+
+  <div class="add-review">
+    <input id="reviewName" placeholder="Your Name">
+    <div class="stars-input" id="starsInput">
+  ★ ★ ★ ★ ★
+</div>
+
+<input id="reviewText" placeholder="Write your review">
+    <button onclick="addReview()">Submit</button>
+  </div>
+
+</div>
+  
+/* BUTTON */
+button{
+  background:#111;
+  color:#fff;
+  border:none;
+  padding:16px;
+  font-size:16px;
+  cursor:pointer;
+  transition:0.3s;
+}
+
+button:hover{
+  opacity:0.85;
+}
+
+/* FADE */
+.fade{
+  opacity:0;
+  transform:translateY(30px);
+  transition:all 0.8s ease;
+}
+
+.fade.show{
+  opacity:1;
+  transform:translateY(0);
+}
+
+/* MOBILE */
+@media(max-width:768px){
+  .container{
+    grid-template-columns:1fr;
+  }
+  .image{
+    position:relative;
+    height:400px;
+  }
+  .info{
+    padding:30px;
+  }
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+  <!-- IMAGE -->
+  <div class="image">
+
+  <!-- MAIN DISPLAY -->
+  <div id="mediaBox"></div>
+
+  <!-- THUMBNAILS -->
+  <div class="thumbs" id="thumbs"></div>
+
+</div>
+
+  <div class="thumb
+
+  <!-- INFO -->
+  <div class="info">
+
+    <h1 class="fade" id="name"></h1>
+    <div class="price fade">₹<span id="price"></span></div>
+
+    <p class="desc fade">
+      Crafted for everyday elegance. Soft, durable, and designed to elevate your style effortlessly.
+    </p>
+
+    <div class="trust fade">
+      ✨ Free Shipping above ₹499 <br>
+      💖 200+ Happy Customers <br>
+      🔒 Secure Checkout
+    </div>
+
+    <button class="fade" onclick="addToCart()">Add to Bag</button>
+
+  </div>
+
+</div>
+
+  <script>
+
+// ===== PRODUCT DATA =====
+const params = new URLSearchParams(window.location.search);
+const product = JSON.parse(decodeURIComponent(params.get("data")));
+
+// ===== SET BASIC INFO =====
+document.getElementById("name").innerText = product.name;
+document.getElementById("price").innerText = product.price;
+
+// ===== GALLERY + VIDEO =====
+const mediaBox = document.getElementById("mediaBox");
+const thumbs = document.getElementById("thumbs");
+
+let mediaList = [...product.images];
+if(product.video){
+  mediaList.push(product.video);
+}
+
+let current = 0;
+
+function showMedia(index){
+  current = index;
+  const src = mediaList[index];
+
+  if(src.endsWith(".mp4")){
+    mediaBox.innerHTML = `
+      <video src="${src}" autoplay muted loop playsinline></video>
+    `;
+  } else {
+    mediaBox.innerHTML = `
+      <img id="mainMedia" src="${src}">
+    `;
+    addZoom(); // attach zoom only for images
+  }
+
+  document.querySelectorAll(".thumbs img")
+    .forEach((t,i)=> t.classList.toggle("active", i === index));
+}
+
+// ===== LOAD THUMBNAILS =====
+mediaList.forEach((src, index)=>{
+  const t = document.createElement("img");
+
+  if(src.endsWith(".mp4")){
+    t.src = product.images[0];
+  } else {
+    t.src = src;
+  }
+
+  t.onclick = ()=> showMedia(index);
+  thumbs.appendChild(t);
+});
+
+showMedia(0);
+
+// ===== SWIPE SUPPORT =====
+let startX = 0;
+
+mediaBox.addEventListener("touchstart", e=>{
+  startX = e.touches[0].clientX;
+});
+
+mediaBox.addEventListener("touchend", e=>{
+  let endX = e.changedTouches[0].clientX;
+
+  if(endX < startX - 50){
+    current = (current + 1) % mediaList.length;
+  }
+  if(endX > startX + 50){
+    current = (current - 1 + mediaList.length) % mediaList.length;
+  }
+
+  showMedia(current);
+});
+
+// ===== APPLE-STYLE ZOOM =====
+function addZoom(){
+  const img = document.getElementById("mainMedia");
+
+  if(!img) return;
+
+  img.addEventListener("mousemove", (e)=>{
+    const rect = img.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width * 100;
+    const y = (e.clientY - rect.top) / rect.height * 100;
+
+    img.style.transformOrigin = `${x}% ${y}%`;
+    img.style.transform = "scale(1.8)";
+  });
+
+  img.addEventListener("mouseleave", ()=>{
+    img.style.transform = "scale(1)";
+  });
+}
+
+// ===== ADD TO CART =====
+function addToCart(){
+  let cart = JSON.parse(localStorage.getItem("cart") || "[]");
+  cart.push(product);
+  localStorage.setItem("cart", JSON.stringify(cart));
+  alert("Added to bag 💖");
+}
+
+// ===== REVIEWS (WITH STARS) =====
+function loadReviews(){
+
+  db.collection("reviews")
+    .where("product","==",product.name)
+    .get()
+    .then(snap=>{
+
+      let html="";
+      let total=0, count=0;
+
+      snap.forEach(doc=>{
+        const r = doc.data();
+        total += r.rating || 5;
+        count++;
+
+        html += `
+        <div class="review">
+          <b>${r.name}</b>
+          <div>${"★".repeat(r.rating || 5)}</div>
+          <p>${r.text}</p>
+        </div>`;
+      });
+
+      document.getElementById("reviewsList").innerHTML = html;
+
+      const avg = count ? (total/count).toFixed(1) : 0;
+      document.getElementById("avgRating").innerText = "⭐ " + avg;
+    });
+}
+
+// ===== ADD REVIEW =====
+let selectedRating = 0;
+
+function add Review(){
+
+  const name = document.getElementById("reviewName").value;
+  const text = document.getElementById("reviewText").value;
+
+  if(!name || !text){
+    return alert("Fill all fields");
+  }
+
+  db.collection("reviews").add({
+    product: product.name,
+    name,
+    text,
+    rating: selectedRating
+  }).then(()=>{
+    loadReviews();
+  });
+}
+
+// ===== STAR INPUT =====
+const starsContainer = document.getElementById("starsInput");
+
+if(starsContainer){
+  starsContainer.innerHTML = "";
+
+  for(let i=1;i<=5;i++){
+    const star = document.createElement("span");
+    star.innerText = "★";
+
+    star.onclick = ()=>{
+      selectedRating = i;
+      updateStars(i);
+    };
+
+    starsContainer.appendChild(star);
+  }
+}
+
+function updateStars(rating){
+  const stars = document.querySelectorAll("#starsInput span");
+
+  stars.forEach((s,index)=>{
+    s.classList.toggle("active", index < rating);
+  });
+}
+
+// INIT
+loadReviews();
+
+</script>
+  
+<h2 class="section-title fade-up">Shop Collection</h2>
+// GET PRODUCT FROM URL
+const params = new URLSearchParams(window.location.search);
+
+const product = {
+  name: params.get("name"),
+  price: params.get("price"),
+  image: params.get("image")
+};
+
+// SET DATA
+document.getElementById("name").innerText = product.name;
+document.getElementById("price").innerText = product.price;
+document.getElementById("img").src = product.image;
+
+// ADD TO CART
+function addToCart(){
+  let cart = JSON.parse(localStorage.getItem("cart") || "[]");
+  cart.push(product);
+  localStorage.setItem("cart", JSON.stringify(cart));
+  alert("Added to bag 💖");
+}
+
+// 🎬 SCROLL FADE (APPLE STYLE)
+const observer = new IntersectionObserver((entries)=>{
+  entries.forEach(entry=>{
+    if(entry.isIntersecting){
+      entry.target.classList.add("show");
+    }
+  });
+},{threshold:0.2});
+
+document.querySelectorAll(".fade").forEach(el=>{
+  observer.observe(el);
+});
+
+// 🔍 IMAGE ZOOM ON SCROLL
+window.addEventListener("scroll",()=>{
+  const scrollY = window.scrollY;
+  document.getElementById("img").style.transform =
+    `scale(${1 + scrollY * 0.0005})`;
+});
+
+</script>
+
+</body>
+</html>
+html+=`
+<div class="card fade-up">
+  <img src="${p.images[0]}">
+  <h3>${p.name}</h3>
+  <p>₹${p.price}</p>
+  <button onclick='viewProduct(${JSON.stringify(p)})'>View</button>
+</div>`;
+
+<div id="mediaBox" class="zoom-container"></div>
+<section class="story fade-up">
+  <h2>Crafted for Comfort</h2>
+  <p>
+    Every scrunchie is designed to feel soft, effortless, and timeless.
+  </p>
+</section>
+
+<section class="editorial-img fade-up">
+  <img src="https://images.unsplash.com/photo-1519741497674-611481863552">
+</section>
+
+<section class="lifestyle fade-up">
+  <div>
+    <h2>Everyday Elegance</h2>
+    <p>Minimal. Soft. Essential.</p>
+  </div>
+</section>
+  
